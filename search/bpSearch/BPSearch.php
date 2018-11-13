@@ -251,6 +251,7 @@ class BPSearch
   public function createCacheFileName()
   {
     $query = $_SERVER['QUERY_STRING'];
+    $query = preg_replace('/&?_=[^&]+/u', '', $query);
     $cacheDirPath = $this->config['cacheDirPath'] ? $this->config['cacheDirPath'] : realpath('cache');
     $cacheFileName = $cacheDirPath . DIRECTORY_SEPARATOR . md5($query);
     $this->devModeMessage('キャッシュファイル名', $cacheFileName);
