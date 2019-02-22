@@ -127,7 +127,12 @@ class BPSearch
    */
   public function limitOffsetAddUrl($url, $page, $limit)
   {
-    return $url . (strpos($url, '?') === false ? '?' : '&') . 'limit=' . $limit . '&offset=' . (($page - 1) * $limit);
+    $out = $url . (strpos($url, '?') === false ? '?' : '&') . "limit={$limit}";
+    $offset = ($page - 1) * $limit;
+    if ($offset > 0) {
+      $out .= "&offset={$offset}";
+    }
+    return $out;
   }
 
 
