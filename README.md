@@ -1,5 +1,20 @@
 # BPSearch.php
 
+## 事前に確認しておくと良いこと
+
+### 一般
+
+* PHP は使えますか？
+* PHP が使える場合、PHP から Linux のシステムコマンドの grep が使えますか？（通常は使えます）
+* 検索結果のレンダリングには Vue.js が便利です。
+
+### Movable Type の場合
+
+* WriteToFile プラグインを使うと再構築が効率よく行えます。  
+[WriteToFile \- Movable Type Plugins](https://www.h-fj.com/mtplugins/writetofile.php)
+* bpSearch のキャッシュ機能を使う場合、キャッシュのクリア用に SystemCommand プラグインを使うと便利です。    
+[tokiwatch/SystemCommand](https://github.com/tokiwatch/SystemCommand)
+
 ## 設置方法
 
 ウェブサイトの任意のディレクトリに下記のディレクトリ構成になるようにファイルをアップロードします。
