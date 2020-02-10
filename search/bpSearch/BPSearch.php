@@ -22,6 +22,8 @@ class BPSearch
     'dataDirPath' => null,
     // キャッシュを保存するディレクトリのパス
     'cacheDirPath' => null,
+    // マージするメタデータのパス
+    'margeMetaJsonPath' => [],
     // limit, offset の初期値を設定
     'limit'  => 20,
     'offset' => 0,
@@ -804,6 +806,16 @@ class BPSearch
     // 処理時間を結果の JSON に追加
     if ($this->config['returnTime']) {
       $this->result['processingTime'] = (microtime(true) - $this->timeStart) . '秒';
+    }
+    
+    // メタデータをマージ
+    if (count($this->config['margeMetaJsonPath'])) {
+      foreach ($this->config['margeMetaJsonPath'] as $path) {
+          if ($mergeJSON = file_get_contents($path)) {
+              $mergeJSON = json_decode($mergeJSON, true);
+              $this->result = array_merge($this->result, $mergeJSON);
+          }
+      }
     }
     $this->setCache();
     $this->response();
