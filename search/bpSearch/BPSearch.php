@@ -11,7 +11,7 @@ class BPSearch
 {
 
   public $timeStart = 0;
-  public $response = [
+  public $result = [
     'totalResults' => 0,
     'items' => [],
   ];
@@ -296,7 +296,7 @@ class BPSearch
       return false;
     }
     $cacheFileName = $this->createCacheFileName();
-    $content = json_encode($this->response, JSON_UNESCAPED_UNICODE);
+    $content = json_encode($this->result, JSON_UNESCAPED_UNICODE);
     file_put_contents($cacheFileName, $content);
   }
 
@@ -371,7 +371,7 @@ class BPSearch
         }
         else {
           if ($this->config['returnTime']) {
-            $this->response['processingTime'] = (microtime(true) - $this->timeStart) . '秒';
+            $this->result['processingTime'] = (microtime(true) - $this->timeStart) . '秒';
           }
           $this->setCache();
           $this->response();
@@ -605,7 +605,7 @@ class BPSearch
    */
   public function response()
   {
-    echo json_encode($this->response, JSON_UNESCAPED_UNICODE);
+    echo json_encode($this->result, JSON_UNESCAPED_UNICODE);
     exit();
   }
 
@@ -677,7 +677,7 @@ class BPSearch
     // ゼロ件だった場合はゼロ結果を返す
     if (count($entries) < 1) {
       if ($this->config['returnTime']) {
-        $this->response['processingTime'] = (microtime(true) - $this->timeStart) . '秒';
+        $this->result['processingTime'] = (microtime(true) - $this->timeStart) . '秒';
       }
       $this->setCache();
       $this->response();
@@ -693,17 +693,17 @@ class BPSearch
     ================================================== */
     // マッチした記事がある場合
     $total_results = count($entries);
-    $this->response['totalResults'] = $total_results;
+    $this->result['totalResults'] = $total_results;
     // すべてを返す設定の場合
     if ($this->config['return_all']) {
-      $this->response['items'] = $entries;
+      $this->result['items'] = $entries;
     }
     // offset が totalResults 以上の場合は error を返す
     elseif ($total_results <= $offset) {
       if ($this->config['returnTime']) {
-        $this->response['processingTime'] = (microtime(true) - $this->timeStart) . '秒';
+        $this->result['processingTime'] = (microtime(true) - $this->timeStart) . '秒';
       }
-      $this->response = [
+      $this->result = [
         'error' => [
           'message' => 'offset値が検索結果件数を超えています。',
         ],
@@ -713,21 +713,21 @@ class BPSearch
     }
     // (totalResults - offset) が limit に満たない場合は offset 位置から最後まで抜き出す
     elseif ( ($total_results - $offset) < $limit ) {
-      $this->response['items'] = array_slice($entries, $offset);
+      $this->result['items'] = array_slice($entries, $offset);
     }
     // 通常の場合
     else {
-      $this->response['items'] = array_slice($entries, $offset, $limit);
+      $this->result['items'] = array_slice($entries, $offset, $limit);
     }
     // 実行ファイルの URL を取得
     $scriptUrl = $this->sanitizeUrl($_SERVER['REQUEST_URI']);
     if ($this->config['includeScriptUrl']) {
-      $this->response['scriptUrl'] = $scriptUrl;
+      $this->result['scriptUrl'] = $scriptUrl;
     }
     // リファラの URL を取得
     $refererUrl = (!empty($_SERVER['HTTP_REFERER'])) ? $this->sanitizeUrl($_SERVER['HTTP_REFERER']) : $scriptUrl;
     if ($this->config['includeRefererUrl']) {
-      $this->response['refererUrl'] = $refererUrl;
+      $this->result['refererUrl'] = $refererUrl;
     }
     // ページネーションを JSON に追加
     if ($this->config['includePagination']) {
@@ -799,11 +799,11 @@ class BPSearch
         }
       }
       // 結果 JSON にセット
-      $this->response['pagination'] = $pagination;
+      $this->result['pagination'] = $pagination;
     }
     // 処理時間を結果の JSON に追加
     if ($this->config['returnTime']) {
-      $this->response['processingTime'] = (microtime(true) - $this->timeStart) . '秒';
+      $this->result['processingTime'] = (microtime(true) - $this->timeStart) . '秒';
     }
     $this->setCache();
     $this->response();
