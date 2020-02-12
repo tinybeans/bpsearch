@@ -617,6 +617,16 @@ class BPSearch
    */
   public function init()
   {
+    // メタデータをマージ
+    if (count($this->config['margeMetaJsonPath'])) {
+      foreach ($this->config['margeMetaJsonPath'] as $path) {
+        if ($mergeJSON = file_get_contents($path)) {
+          $mergeJSON = json_decode($mergeJSON, true);
+          $this->result = array_merge($this->result, $mergeJSON);
+        }
+      }
+    }
+
     // クエリ文字列を表示
     $this->devModeMessage('QUERY_STRING', $_SERVER['QUERY_STRING']);
 
@@ -808,15 +818,6 @@ class BPSearch
       $this->result['processingTime'] = (microtime(true) - $this->timeStart) . '秒';
     }
     
-    // メタデータをマージ
-    if (count($this->config['margeMetaJsonPath'])) {
-      foreach ($this->config['margeMetaJsonPath'] as $path) {
-          if ($mergeJSON = file_get_contents($path)) {
-              $mergeJSON = json_decode($mergeJSON, true);
-              $this->result = array_merge($this->result, $mergeJSON);
-          }
-      }
-    }
     $this->setCache();
     $this->response();
     /*  END 結果を出力  */
