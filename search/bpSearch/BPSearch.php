@@ -84,7 +84,7 @@ class BPSearch
   }
 
 
-  /**
+  /**   
    * devMode が true の時にデバッグ用のメッセージを出力する。
    *
    * @param $varName
@@ -626,6 +626,9 @@ class BPSearch
         }
       }
     }
+
+    // クエリ文字列をマージ
+    $this->result['params'] = $_GET;
 
     // クエリ文字列を表示
     $this->devModeMessage('QUERY_STRING', $_SERVER['QUERY_STRING']);
