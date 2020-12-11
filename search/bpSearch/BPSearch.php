@@ -2,8 +2,9 @@
 /**
  * BPSearch クラス
  *
+ * @version   1.1.0
  * @package   BPSearch
- * @copyright Copyright (c) Tomohiro Okuwaki, bit part LLC
+ * @copyright Copyright (c) Roy Okuwaki, bit part LLC
  * @link      https://bit-part.net
  */
 
@@ -561,13 +562,33 @@ class BPSearch
               }
             }
             // 完全一致検索の場合（初期値）
-            elseif ($entry[$mappedKey] === $value) {
-              $match++;
+            else {
+              // :empty:
+              if ($value === ':empty:' && $entry[$mappedKey] === '') {
+                $match++;
+              }
+              // :notempty:
+              elseif ($value === ':notempty:' && $entry[$mappedKey] !== '') {
+                $match++;
+              }
+              elseif ($entry[$mappedKey] === $value) {
+                $match++;
+              }
             }
           }
           // 完全一致検索の場合（初期値）
-          elseif ($entry[$mappedKey] === $value) {
-            $match++;
+          else {
+              // :empty:
+              if ($value === ':empty:' && $entry[$mappedKey] === '') {
+                  $match++;
+              }
+              // :notempty:
+              elseif ($value === ':notempty:' && $entry[$mappedKey] !== '') {
+                  $match++;
+              }
+              elseif ($entry[$mappedKey] === $value) {
+                  $match++;
+              }
           }
         }
         // $filters のアイテム数とマッチ数が一致しなかったら $entries から削除
@@ -606,7 +627,7 @@ class BPSearch
       }
       $sort[$i] = [];
       foreach ($entries as $key => $value) {
-        $sort[$i][$key] = $value[$sortBy[$i]] ? $value[$sortBy[$i]] : null;
+        $sort[$i][$key] = isset($value[$sortBy[$i]]) && $value[$sortBy[$i]] ? $value[$sortBy[$i]] : null;
       }
     }
     if (!empty($sort)) {
