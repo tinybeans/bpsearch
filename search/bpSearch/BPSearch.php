@@ -121,6 +121,23 @@ class BPSearch
 
 
   /**
+   * $page（現在のページ数）と $limit 数から offset を算出する。
+   *
+   * @param $page
+   * @param $limit
+   * @return number
+   */
+  public function getOffset($page, $limit)
+  {
+    $offset = ($page - 1) * $limit;
+    if ($offset < 0) {
+      $offset = 0;
+    }
+    return $offset;
+  }
+
+
+  /**
    * $url に $page（現在のページ数）と $limit 数を渡すと自動で offset を算出して、
    * limit と offset を付与した URL を返す。
    *
@@ -768,6 +785,7 @@ class BPSearch
         $pagination['pages'][] = [
           'page' => $value,
           'url' => $this->limitOffsetAddUrl($refererUrl['sanitizeQuery'], $value, $limit),
+          'offset' => $this->getOffset($value, $limit),
         ];
       }
       // 前のページを作成
@@ -812,6 +830,7 @@ class BPSearch
           $pagination['corePages'][] = [
             'page' => $value,
             'url' => $this->limitOffsetAddUrl($refererUrl['sanitizeQuery'], $value, $limit),
+            'offset' => $this->getOffset($value, $limit),
           ];
         }
       }
