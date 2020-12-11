@@ -41,7 +41,8 @@ Template Type : index
 Template Note : WriteToFile プラグイン必須
 ==================================================</mt:Ignore>
 <mt:SetVars note="初期設定">
-json_path =<mt:BlogSitePath />search/data/all.json<mt:TemplateNote />
+json_path =<mt:BlogSitePath />search/data/all.json
+cache_path =<mt:BlogSitePath />search/cache/.htaccess
 </mt:SetVars>
 <mt:For compress="2" trim="1">
 
@@ -139,6 +140,7 @@ json_path =<mt:BlogSitePath />search/data/all.json<mt:TemplateNote />
   <mt:WriteToFile file="$json_path">
     <mt:Var name="response" to_json="1" />
   </mt:WriteToFile>
+  <mt:WriteToFile file="$cache_path">Deny from all</mt:WriteToFile>
 
 </mt:For>
 ```

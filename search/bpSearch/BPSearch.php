@@ -11,7 +11,7 @@ class BPSearch
 {
 
   public $timeStart = 0;
-  public $response = [
+  public $result = [
     'totalResults' => 0,
     'items' => [],
   ];
@@ -22,6 +22,10 @@ class BPSearch
     'dataDirPath' => null,
     // キャッシュを保存するディレクトリのパス
     'cacheDirPath' => null,
+    // マージする検索データのパス
+    'margeItemsJsonPath' => [],
+    // マージするメタデータのパス
+    'margeMetaJsonPath' => [],
     // limit, offset の初期値を設定
     'limit'  => 20,
     'offset' => 0,
@@ -82,7 +86,7 @@ class BPSearch
   }
 
 
-  /**
+  /**   
    * devMode が true の時にデバッグ用のメッセージを出力する。
    *
    * @param $varName
@@ -113,6 +117,23 @@ class BPSearch
       $value = print_r(number_format(memory_get_usage() - $initialMemoryUse), true);
       $this->devModeMessage('Memory', $value);
     }
+  }
+
+
+  /**
+   * $page（現在のページ数）と $limit 数から offset を算出する。
+   *
+   * @param $page
+   * @param $limit
+   * @return number
+   */
+  public function getOffset($page, $limit)
+  {
+    $offset = ($page - 1) * $limit;
+    if ($offset < 0) {
+      $offset = 0;
+    }
+    return $offset;
   }
 
 
@@ -296,7 +317,7 @@ class BPSearch
       return false;
     }
     $cacheFileName = $this->createCacheFileName();
-    $content = json_encode($this->response, JSON_UNESCAPED_UNICODE);
+    $content = json_encode($this->result, JSON_UNESCAPED_UNICODE);
     file_put_contents($cacheFileName, $content);
   }
 
@@ -371,7 +392,7 @@ class BPSearch
         }
         else {
           if ($this->config['returnTime']) {
-            $this->response['processingTime'] = (microtime(true) - $this->timeStart) . '秒';
+            $this->result['processingTime'] = (microtime(true) - $this->timeStart) . '秒';
           }
           $this->setCache();
           $this->response();
@@ -605,7 +626,7 @@ class BPSearch
    */
   public function response()
   {
-    echo json_encode($this->response, JSON_UNESCAPED_UNICODE);
+    echo json_encode($this->result, JSON_UNESCAPED_UNICODE);
     exit();
   }
 
@@ -615,6 +636,19 @@ class BPSearch
    */
   public function init()
   {
+    // メタデータをマージ
+    if (count($this->config['margeMetaJsonPath'])) {
+      foreach ($this->config['margeMetaJsonPath'] as $path) {
+        if ($mergeJSON = file_get_contents($path)) {
+          $mergeJSON = json_decode($mergeJSON, true);
+          $this->result = array_merge($this->result, $mergeJSON);
+        }
+      }
+    }
+
+    // クエリ文字列をマージ
+    $this->result['params'] = $_GET;
+
     // クエリ文字列を表示
     $this->devModeMessage('QUERY_STRING', $_SERVER['QUERY_STRING']);
 
@@ -677,7 +711,7 @@ class BPSearch
     // ゼロ件だった場合はゼロ結果を返す
     if (count($entries) < 1) {
       if ($this->config['returnTime']) {
-        $this->response['processingTime'] = (microtime(true) - $this->timeStart) . '秒';
+        $this->result['processingTime'] = (microtime(true) - $this->timeStart) . '秒';
       }
       $this->setCache();
       $this->response();
@@ -693,17 +727,17 @@ class BPSearch
     ================================================== */
     // マッチした記事がある場合
     $total_results = count($entries);
-    $this->response['totalResults'] = $total_results;
+    $this->result['totalResults'] = $total_results;
     // すべてを返す設定の場合
     if ($this->config['return_all']) {
-      $this->response['items'] = $entries;
+      $this->result['items'] = $entries;
     }
     // offset が totalResults 以上の場合は error を返す
     elseif ($total_results <= $offset) {
       if ($this->config['returnTime']) {
-        $this->response['processingTime'] = (microtime(true) - $this->timeStart) . '秒';
+        $this->result['processingTime'] = (microtime(true) - $this->timeStart) . '秒';
       }
-      $this->response = [
+      $this->result = [
         'error' => [
           'message' => 'offset値が検索結果件数を超えています。',
         ],
@@ -713,21 +747,21 @@ class BPSearch
     }
     // (totalResults - offset) が limit に満たない場合は offset 位置から最後まで抜き出す
     elseif ( ($total_results - $offset) < $limit ) {
-      $this->response['items'] = array_slice($entries, $offset);
+      $this->result['items'] = array_slice($entries, $offset);
     }
     // 通常の場合
     else {
-      $this->response['items'] = array_slice($entries, $offset, $limit);
+      $this->result['items'] = array_slice($entries, $offset, $limit);
     }
     // 実行ファイルの URL を取得
     $scriptUrl = $this->sanitizeUrl($_SERVER['REQUEST_URI']);
     if ($this->config['includeScriptUrl']) {
-      $this->response['scriptUrl'] = $scriptUrl;
+      $this->result['scriptUrl'] = $scriptUrl;
     }
     // リファラの URL を取得
     $refererUrl = (!empty($_SERVER['HTTP_REFERER'])) ? $this->sanitizeUrl($_SERVER['HTTP_REFERER']) : $scriptUrl;
     if ($this->config['includeRefererUrl']) {
-      $this->response['refererUrl'] = $refererUrl;
+      $this->result['refererUrl'] = $refererUrl;
     }
     // ページネーションを JSON に追加
     if ($this->config['includePagination']) {
@@ -751,6 +785,7 @@ class BPSearch
         $pagination['pages'][] = [
           'page' => $value,
           'url' => $this->limitOffsetAddUrl($refererUrl['sanitizeQuery'], $value, $limit),
+          'offset' => $this->getOffset($value, $limit),
         ];
       }
       // 前のページを作成
@@ -795,16 +830,18 @@ class BPSearch
           $pagination['corePages'][] = [
             'page' => $value,
             'url' => $this->limitOffsetAddUrl($refererUrl['sanitizeQuery'], $value, $limit),
+            'offset' => $this->getOffset($value, $limit),
           ];
         }
       }
       // 結果 JSON にセット
-      $this->response['pagination'] = $pagination;
+      $this->result['pagination'] = $pagination;
     }
     // 処理時間を結果の JSON に追加
     if ($this->config['returnTime']) {
-      $this->response['processingTime'] = (microtime(true) - $this->timeStart) . '秒';
+      $this->result['processingTime'] = (microtime(true) - $this->timeStart) . '秒';
     }
+    
     $this->setCache();
     $this->response();
     /*  END 結果を出力  */
