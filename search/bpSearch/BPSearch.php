@@ -4,7 +4,7 @@
  *
  * @version   1.1.0
  * @package   BPSearch
- * @copyright Copyright (c) Tomohiro Okuwaki, bit part LLC
+ * @copyright Copyright (c) Roy Okuwaki, bit part LLC
  * @link      https://bit-part.net
  */
 
