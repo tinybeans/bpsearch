@@ -22,6 +22,8 @@ class BPSearch
     'dataDirPath' => null,
     // キャッシュを保存するディレクトリのパス
     'cacheDirPath' => null,
+    // マージする検索データのパス
+    'margeItemsJsonPath' => [],
     // マージするメタデータのパス
     'margeMetaJsonPath' => [],
     // limit, offset の初期値を設定
