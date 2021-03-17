@@ -48,6 +48,8 @@ class BPSearch
       'day' => 'eq',
       'datetime' => 'eq',
     ],
+    // 初期値として与えるパラメータ
+    'initParams' => null,
     // パラメータマッピング
     'paramMapping' => [
       'from' => 'datetime',
@@ -82,7 +84,12 @@ class BPSearch
     if (!empty($config) && is_array($config)) {
       $this->config = array_merge($this->config, $config);
     }
+    if (isset($config['initParams']) && is_array($config['initParams']) && count($config['initParams'])) {
+        $this->requestedParams = array_merge($config['initParams'], $_GET);
+    }
+    else {
     $this->requestedParams = $_GET;
+    }
     $this->init();
   }
 
