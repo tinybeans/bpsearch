@@ -2,7 +2,7 @@
 /**
  * BPSearch クラス
  *
- * @version   1.1.0
+ * @version   1.2.0
  * @package   BPSearch
  * @copyright Copyright (c) Roy Okuwaki, bit part LLC
  * @link      https://bit-part.net
