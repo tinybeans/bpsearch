@@ -4,9 +4,11 @@
  *
  * @version   1.2.0
  * @package   BPSearch
- * @copyright Copyright (c) Roy Okuwaki, bit part LLC
- * @link      https://bit-part.net
+ * @copyright Copyright (c) Roy Okuwaki
+ * @link      https://tinybeans.net
  */
+
+namespace tinybeans\bpsearch;
 
 class BPSearch
 {
@@ -32,6 +34,9 @@ class BPSearch
         'offset' => 0,
         // limit, offset にかかわらずすべての結果を返す場合は true をセット
         'return_all' => false,
+        // 先頭のいくつかの item を抜き出して splicedItems に入れる。[$offset, $length] という 2要素を持つ配列で指定する。
+        // URL パラメータで指定する場合は splice_o と splice_l で指定する
+        'splice' => null, // 先頭の1つを抜き出す場合は [0, 1]
         // フィルター検索を許可するパラメータ（ `search` `rand` `from` `to` は特殊なパラメータのためフィルターに利用できません）
         'filters' => [
             'id' => 'eq',
@@ -89,6 +94,13 @@ class BPSearch
         }
         else {
             $this->requestedParams = $_GET;
+        }
+        // spliceオプションを上書きする
+        if (!empty($_GET['splice_l'])) {
+            $this->config['splice'] = [
+                !empty($_GET['splice_o']) ? (int)$_GET['splice_o'] : 0,
+                (int)$_GET['splice_l']
+            ];
         }
         $this->init();
     }
@@ -773,13 +785,27 @@ class BPSearch
             $this->setCache();
             $this->response();
         }
-        // (totalResults - offset) が limit に満たない場合は offset 位置から最後まで抜き出す
-        elseif ( ($total_results - $offset) < $limit ) {
-            $this->result['items'] = array_slice($entries, $offset);
-        }
-        // 通常の場合
         else {
-            $this->result['items'] = array_slice($entries, $offset, $limit);
+            // splice オプションが設定されている場合
+            if (isset($this->config['splice']) && is_array($this->config['splice'])) {
+                $spliceLength = $this->config['splice'][1] < $total_results ? $this->config['splice'][1] : $total_results;
+                $splicedItems = array_splice($entries, $this->config['splice'][0], $spliceLength);
+                $this->result['splicedItems'] = $splicedItems;
+                $this->result['items'] = $entries;
+            }
+            // (totalResults - offset) が limit に満たない場合は offset 位置から最後まで抜き出す
+            if ( ($total_results - $offset) < $limit ) {
+                if ($offset === 0 && isset($splicedItems)) {
+                    $this->result['items'] = array_slice($entries, $offset - count($splicedItems));
+                }
+                else {
+                    $this->result['items'] = array_slice($entries, $offset);
+                }
+            }
+            // 通常の場合
+            else {
+                $this->result['items'] = array_slice($entries, $offset, $limit);
+            }
         }
         // 実行ファイルの URL を取得
         $scriptUrl = $this->sanitizeUrl($_SERVER['REQUEST_URI']);
