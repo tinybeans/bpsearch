@@ -1,0 +1,24 @@
+{
+    "name": "tinybeans/bpsearch",
+    "description": "bpsearch core scripts",
+    "type": "library",
+    "license": "proprietary",
+    "authors": [
+        {
+            "name": "Roy Okuwaki",
+            "email": "info@tinybeans.dev"
+        }
+    ],
+    "require": {},
+    "autoload": {
+        "psr-4": {
+            "tinybeans\\bpsearch\\": "src/"
+        }
+    },
+    "config": {
+        "sort-packages": true,
+        "platform": {
+            "php":  "5.6"
+        }
+    }
+}

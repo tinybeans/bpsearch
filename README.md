@@ -24,10 +24,10 @@
 └── search
     ├── cache
     ├── data
-    │   ├── all.json
-    │   └── all.txt
+    │   ├── all.json
+    │   └── all.txt
     ├── bpSearch
-    │   └── BPSearch.php
+    │   └── BPSearch.php
     └── search.php
 ```
 ### data/all.json
