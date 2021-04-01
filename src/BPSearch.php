@@ -404,8 +404,8 @@ class BPSearch
                     array_unique($ids);
                     $this->devModeMessage('該当ID', implode(', ', $ids));
                     foreach ($ids as $id) {
-                        if (array_key_exists('e' . $id, $data)) {
-                            $entries[] = $data['e' . $id];
+                        if (array_key_exists($id, $data)) {
+                            $entries[] = $data[$id];
                         }
                     }
                 }
