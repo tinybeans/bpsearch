@@ -665,10 +665,12 @@ class BPSearch
      */
     public function response()
     {
+        if (function_exists('beforeResponse')) {
+            $this->result = beforeResponse($this->result);
+        }
         echo json_encode($this->result, JSON_UNESCAPED_UNICODE);
         exit();
     }
-
 
     /**
      * Initialisation
