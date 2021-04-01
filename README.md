@@ -202,3 +202,62 @@ JSON の値のサンプル
 
 "categoryIds": [ "123", "307", "333" ],
 ```
+
+## コールバック関数
+
+コールバック関数を定義する場合は、 `new BPSearch()` の前に関数を定義します。
+
+**beforeResponse() を定義する場合**
+
+```
+function beforeResponse($result) {
+    $timezone = 'Asia/Tokyo';
+    $today = new DateTime('now', new DateTimeZone($timezone));
+
+    foreach ($result['items'] as &$item) {
+        $entryDate = new DateTime($item['datetimeIso8601'], new DateTimeZone($timezone));
+        $diff = $entryDate->diff($today);
+        $item['publishedBefore'] = $diff->days;
+    }
+    return $result;
+}
+
+$bpsearch = new BPSearch();
+```
+
+### beforeResponse()
+
+レスポンスを返す直前に実行されます。
+
+#### 引数
+
+- `$result` 引数にレスポンスで出力される値が配列で渡されます。
+
+```
+$result = [
+    'totalResults' => (the number of the items),
+    'items' => [
+        (array of an item)
+    ]
+];
+```
+
+#### 戻り値
+
+- 引数で渡された `$result` を配列で戻します。
+
+#### 例
+
+```
+function beforeResponse($result) {
+    $timezone = 'Asia/Tokyo';
+    $today = new DateTime('now', new DateTimeZone($timezone));
+
+    foreach ($result['items'] as &$item) {
+        $entryDate = new DateTime($item['datetimeIso8601'], new DateTimeZone($timezone));
+        $diff = $entryDate->diff($today);
+        $item['publishedBefore'] = $diff->days;
+    }
+    return $result;
+}
+```
