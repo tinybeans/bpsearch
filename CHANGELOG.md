@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+## 1.3.1 - 2021-04-02
+
+### Added
+
+- Added the `beforeResponse()` callback function
+
+### Removed
+
+- Removed the second parameter from __construct
+- Removed ‘e’ prefix from JSON key
+
 ## 1.3.0 - 2021-03-30
 
 ### Added

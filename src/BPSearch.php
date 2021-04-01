@@ -82,9 +82,8 @@ class BPSearch
      * Initialisation
      *
      * @param $config
-     * @param $devMode
      */
-    public function __construct($config, $devMode)
+    public function __construct($config)
     {
         if (!empty($config) && is_array($config)) {
             $this->config = array_merge($this->config, $config);
@@ -405,8 +404,8 @@ class BPSearch
                     array_unique($ids);
                     $this->devModeMessage('該当ID', implode(', ', $ids));
                     foreach ($ids as $id) {
-                        if (array_key_exists('e' . $id, $data)) {
-                            $entries[] = $data['e' . $id];
+                        if (array_key_exists($id, $data)) {
+                            $entries[] = $data[$id];
                         }
                     }
                 }
@@ -666,10 +665,12 @@ class BPSearch
      */
     public function response()
     {
+        if (function_exists('beforeResponse')) {
+            $this->result = beforeResponse($this->result);
+        }
         echo json_encode($this->result, JSON_UNESCAPED_UNICODE);
         exit();
     }
-
 
     /**
      * Initialisation
