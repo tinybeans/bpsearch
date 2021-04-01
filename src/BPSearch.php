@@ -82,9 +82,8 @@ class BPSearch
      * Initialisation
      *
      * @param $config
-     * @param $devMode
      */
-    public function __construct($config, $devMode)
+    public function __construct($config)
     {
         if (!empty($config) && is_array($config)) {
             $this->config = array_merge($this->config, $config);
