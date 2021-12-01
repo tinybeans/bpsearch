@@ -13,6 +13,8 @@ namespace tinybeans\bpsearch;
 class BPSearch
 {
 
+    private $getParams;
+
     public $timeStart = 0;
     public $result = [
         'totalResults' => 0,
@@ -85,22 +87,41 @@ class BPSearch
      */
     public function __construct($config)
     {
+        $commandOptions = getopt(null, ['query::']);
+        if (empty($commandOptions)) {
+            $this->getParams = $_GET;
+        }
+        else {
+            $commandParams = [];
+            foreach (explode('&', $commandOptions['query']) as $query) {
+                $parseQuery = explode('=', $query);
+                $commandParams[$parseQuery[0]] = $parseQuery[1];
+            }
+            $this->getParams = $commandParams;
+        }
+
+        // 実行前にGetパラメータを調整
+        if (function_exists('modifyGetParams')) {
+            $this->getParams = modifyGetParams($this->getParams);
+        }
+
         if (!empty($config) && is_array($config)) {
             $this->config = array_merge($this->config, $config);
         }
         if (isset($config['initParams']) && is_array($config['initParams']) && count($config['initParams'])) {
-            $this->requestedParams = array_merge($config['initParams'], $_GET);
+            $this->requestedParams = array_merge($config['initParams'], $this->getParams);
         }
         else {
-            $this->requestedParams = $_GET;
+            $this->requestedParams = $this->getParams;
         }
         // spliceオプションを上書きする
-        if (!empty($_GET['splice_l'])) {
+        if (!empty($this->getParams['splice_l'])) {
             $this->config['splice'] = [
-                !empty($_GET['splice_o']) ? (int)$_GET['splice_o'] : 0,
-                (int)$_GET['splice_l']
+                !empty($this->getParams['splice_o']) ? (int)$this->getParams['splice_o'] : 0,
+                (int)$this->getParams['splice_l']
             ];
         }
+
         $this->init();
     }
 
@@ -688,10 +709,10 @@ class BPSearch
         }
 
         // クエリ文字列をマージ
-        $this->result['params'] = $_GET;
+        $this->result['params'] = $this->getParams;
 
         // クエリ文字列を表示
-        $this->devModeMessage('QUERY_STRING', $_SERVER['QUERY_STRING']);
+        $this->devModeMessage('QUERY_STRING', (isset($_SERVER['QUERY_STRING']) ? $_SERVER['QUERY_STRING'] : ''));
 
         // cache=1 パラメータがついていてキャッシュファイルがある場合はそのファイルの中身を返して終了
         $this->getCache();
@@ -809,7 +830,7 @@ class BPSearch
             }
         }
         // 実行ファイルの URL を取得
-        $scriptUrl = $this->sanitizeUrl($_SERVER['REQUEST_URI']);
+        $scriptUrl = isset($_SERVER['REQUEST_URI']) ? $this->sanitizeUrl($_SERVER['REQUEST_URI']) : $this->sanitizeUrl('');
         if ($this->config['includeScriptUrl']) {
             $this->result['scriptUrl'] = $scriptUrl;
         }
