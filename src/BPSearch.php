@@ -725,6 +725,7 @@ class BPSearch
         exit();
     }
 
+
     /**
      * Initialisation
      */
@@ -734,8 +735,10 @@ class BPSearch
         if (count($this->config['margeMetaJsonPath'])) {
             foreach ($this->config['margeMetaJsonPath'] as $path) {
                 if ($mergeJSON = file_get_contents($path)) {
-                    $mergeJSON = json_decode($mergeJSON, true);
-                    $this->result = array_merge($this->result, $mergeJSON);
+                    $mergeData = json_decode($mergeJSON, true);
+                    unset($mergeJSON);
+                    $this->result = array_merge($this->result, $mergeData);
+                    unset($mergeData);
                 }
             }
         }
@@ -766,9 +769,11 @@ class BPSearch
 
         // 全記事の連想配列を作成
         $data = [];
-        if ($json = file_get_contents($this->dataDirPath . '/all.json')) {
-            $data = json_decode($json, true);
-            $data = $data['items'];
+        if ($allJson = file_get_contents($this->dataDirPath . '/all.json')) {
+            $json = json_decode($allJson, true);
+            unset($allJson);
+            $data = $json['items'];
+            unset($json);
         }
         $this->devModeMessage('全記事数', count($data));
         $this->devModeDumpMemory();
