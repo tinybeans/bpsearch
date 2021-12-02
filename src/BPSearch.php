@@ -95,7 +95,7 @@ class BPSearch
             $commandParams = [];
             foreach (explode('&', $commandOptions['query']) as $query) {
                 $parseQuery = explode('=', $query);
-                $commandParams[$parseQuery[0]] = $parseQuery[1];
+                $commandParams[$parseQuery[0]] = urldecode($parseQuery[1]);
             }
             $this->getParams = $commandParams;
         }
