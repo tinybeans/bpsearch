@@ -632,6 +632,10 @@ class BPSearch
                                 $match++;
                             }
                         }
+                        // ignore の場合（無視する）
+                        elseif ($filterRules[$key] === 'ignore') {
+                            $match++;
+                        }
                         // 完全一致検索の場合（初期値）
                         else {
                             // :empty:
