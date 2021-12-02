@@ -136,7 +136,6 @@ class BPSearch
     {
         if ($this->config['devMode']) {
             $value = print_r($var, true);
-            echo "--------------------------------------\n";
             echo "$varName\n";
             echo "$value\n";
             echo "--------------------------------------\n";
@@ -393,7 +392,7 @@ class BPSearch
             // search パラメータの値の中で、半角・全角スペース、+ が連続している場合、半角スペース一つにする
             $search = preg_replace('/[　\s\+]+/u', ' ', $search);
 
-            // search パラメータの値を、半角・全角スペースで分割して配列にする
+            // search パラメータの値を、半角スペースで分割して配列にする
             $keywords = preg_split('/ /u', $search);
             $keywords_count = count($keywords);
             $this->devModeMessage('キーワード（$search）', $search);
@@ -403,22 +402,48 @@ class BPSearch
             // 検索用コマンドを作成
             $cmd = '';
             $tmpFileNames = [];
+            $operator = $this->requestedParams['operator'] ?: 'AND';
+            $operator = strtoupper($operator);
+            $this->devModeMessage('検索条件（$operator）', $operator);
             foreach ($keywords as $keyword) {
                 $tmpFileName = tempnam(sys_get_temp_dir(), 'grep-param-');
                 $tmpFileNames[] = $tmpFileName;
                 $handle = fopen($tmpFileName, 'w');
                 fwrite($handle, $keyword);
                 fclose($handle);
-                if (empty($cmd)) {
-                    $cmd = 'grep -i -f "' . $tmpFileName . '" ' . $this->dataDirPath . '/all.txt';
-                } else {
-                    $cmd .= ' | grep -i -f "' . $tmpFileName . '"';
+                if ($operator === 'AND') {
+                    if (empty($cmd)) {
+                        $cmd = 'grep -i -f "' . $tmpFileName . '" ' . $this->dataDirPath . '/all.txt';
+                    }
+                    else {
+                        $cmd .= ' | grep -i -f "' . $tmpFileName . '"';
+                    }
                 }
+                elseif ($operator === 'OR') {
+                    if (empty($cmd)) {
+                        $cmd = 'grep -i -f "' . $tmpFileName . '"';
+                    }
+                    else {
+                        $cmd .= ' -i -f "' . $tmpFileName . '"';
+                    }
+                }
+                elseif ($operator === 'NOT') {
+                    if (empty($cmd)) {
+                        $cmd = 'grep -i -v -f "' . $tmpFileName . '"';
+                    }
+                    else {
+                        $cmd .= ' -i -v -f "' . $tmpFileName . '"';
+                    }
+                }
+            }
+            if ($operator === 'OR' || $operator === 'NOT') {
+                $cmd .= ' ' . $this->dataDirPath . '/all.txt';
             }
             if ($cmd != '') {
                 $cmd .= ' | awk \'{print $1}\'';
                 $res = chop(shell_exec($cmd));
                 $this->devModeMessage('実行コマンド', $cmd);
+                $this->devModeMessage('コマンド実行結果', $res);
                 if ($res) {
                     $ids = explode("\n", $res);
                     unset($res);
