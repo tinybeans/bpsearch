@@ -105,15 +105,22 @@ class BPSearch
             $this->getParams = modifyGetParams($this->getParams);
         }
 
+        // ページネーションを無効化する
+        if (isset($this->getParams['includePagination']) && empty($this->getParams['includePagination'])) {
+            $config['includePagination'] = false;
+        }
+
         if (!empty($config) && is_array($config)) {
             $this->config = array_merge($this->config, $config);
         }
+
         if (isset($config['initParams']) && is_array($config['initParams']) && count($config['initParams'])) {
             $this->requestedParams = array_merge($config['initParams'], $this->getParams);
         }
         else {
             $this->requestedParams = $this->getParams;
         }
+
         // spliceオプションを上書きする
         if (!empty($this->getParams['splice_l'])) {
             $this->config['splice'] = [
