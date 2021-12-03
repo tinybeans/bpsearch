@@ -409,7 +409,7 @@ class BPSearch
             // 検索用コマンドを作成
             $cmd = '';
             $tmpFileNames = [];
-            $operator = $this->requestedParams['operator'] ?: 'AND';
+            $operator = isset($this->requestedParams['operator']) ? $this->requestedParams['operator'] : 'AND';
             $operator = strtoupper($operator);
             $this->devModeMessage('検索条件（$operator）', $operator);
             foreach ($keywords as $keyword) {
