@@ -39,7 +39,7 @@ class BPSearch
         // 先頭のいくつかの item を抜き出して splicedItems に入れる。[$offset, $length] という 2要素を持つ配列で指定する。
         // URL パラメータで指定する場合は splice_o と splice_l で指定する
         'splice' => null, // 先頭の1つを抜き出す場合は [0, 1]
-        // フィルター検索を許可するパラメータ（ `search` `rand` `from` `to` は特殊なパラメータのためフィルターに利用できません）
+        // フィルター検索を許可するパラメータ（ `search` `rand` `from` `to` `operator` は特殊なパラメータのためフィルターに利用できません）
         'filters' => [
             'id' => 'eq',
             'title' => 'like',
@@ -397,12 +397,12 @@ class BPSearch
             $search = $this->getParamValue($this->requestedParams['search']);
 
             // search パラメータの値の中で、半角・全角スペース、+ が連続している場合、半角スペース一つにする
-            $search = preg_replace('/[　\s\+]+/u', ' ', $search);
+            $search = preg_replace('/[　\s\+]+(?=(?:[^"]*"[^"]*")*[^"]*$)/ui', ' ', $search);
+            $this->devModeMessage('キーワード（$search）', $search);
 
             // search パラメータの値を、半角スペースで分割して配列にする
-            $keywords = preg_split('/ /u', $search);
+            $keywords = preg_split('/ (?=(?:[^"]*"[^"]*")*[^"]*$)/ui', $search);
             $keywords_count = count($keywords);
-            $this->devModeMessage('キーワード（$search）', $search);
             $this->devModeMessage('キーワード（$keywords）', $keywords);
             $this->devModeMessage('キーワード数', $keywords_count);
 
@@ -413,6 +413,8 @@ class BPSearch
             $operator = strtoupper($operator);
             $this->devModeMessage('検索条件（$operator）', $operator);
             foreach ($keywords as $keyword) {
+                $keyword = preg_replace('/^"|"$/u', '', $keyword);
+                $this->devModeMessage('処理中のキーワード', $keyword);
                 $tmpFileName = tempnam(sys_get_temp_dir(), 'grep-param-');
                 $tmpFileNames[] = $tmpFileName;
                 $handle = fopen($tmpFileName, 'w');
