@@ -2,7 +2,7 @@
 /**
  * BPSearch クラス
  *
- * @version   1.3.0
+ * @version   1.3.2
  * @package   BPSearch
  * @copyright Copyright (c) Roy Okuwaki
  * @link      https://tinybeans.net
@@ -12,6 +12,8 @@ namespace tinybeans\bpsearch;
 
 class BPSearch
 {
+
+    private $getParams;
 
     public $timeStart = 0;
     public $result = [
@@ -37,7 +39,7 @@ class BPSearch
         // 先頭のいくつかの item を抜き出して splicedItems に入れる。[$offset, $length] という 2要素を持つ配列で指定する。
         // URL パラメータで指定する場合は splice_o と splice_l で指定する
         'splice' => null, // 先頭の1つを抜き出す場合は [0, 1]
-        // フィルター検索を許可するパラメータ（ `search` `rand` `from` `to` は特殊なパラメータのためフィルターに利用できません）
+        // フィルター検索を許可するパラメータ（ `search` `rand` `from` `to` `operator` は特殊なパラメータのためフィルターに利用できません）
         'filters' => [
             'id' => 'eq',
             'title' => 'like',
@@ -85,22 +87,48 @@ class BPSearch
      */
     public function __construct($config)
     {
+        $commandOptions = getopt(null, ['query::']);
+        if (empty($commandOptions)) {
+            $this->getParams = $_GET;
+        }
+        else {
+            $commandParams = [];
+            foreach (explode('&', $commandOptions['query']) as $query) {
+                $parseQuery = explode('=', $query);
+                $commandParams[$parseQuery[0]] = urldecode($parseQuery[1]);
+            }
+            $this->getParams = $commandParams;
+        }
+
+        // 実行前にGetパラメータを調整
+        if (function_exists('modifyGetParams')) {
+            $this->getParams = modifyGetParams($this->getParams);
+        }
+
+        // ページネーションを無効化する
+        if (isset($this->getParams['includePagination']) && empty($this->getParams['includePagination'])) {
+            $config['includePagination'] = false;
+        }
+
         if (!empty($config) && is_array($config)) {
             $this->config = array_merge($this->config, $config);
         }
+
         if (isset($config['initParams']) && is_array($config['initParams']) && count($config['initParams'])) {
-            $this->requestedParams = array_merge($config['initParams'], $_GET);
+            $this->requestedParams = array_merge($config['initParams'], $this->getParams);
         }
         else {
-            $this->requestedParams = $_GET;
+            $this->requestedParams = $this->getParams;
         }
+
         // spliceオプションを上書きする
-        if (!empty($_GET['splice_l'])) {
+        if (!empty($this->getParams['splice_l'])) {
             $this->config['splice'] = [
-                !empty($_GET['splice_o']) ? (int)$_GET['splice_o'] : 0,
-                (int)$_GET['splice_l']
+                !empty($this->getParams['splice_o']) ? (int)$this->getParams['splice_o'] : 0,
+                (int)$this->getParams['splice_l']
             ];
         }
+
         $this->init();
     }
 
@@ -115,7 +143,6 @@ class BPSearch
     {
         if ($this->config['devMode']) {
             $value = print_r($var, true);
-            echo "--------------------------------------\n";
             echo "$varName\n";
             echo "$value\n";
             echo "--------------------------------------\n";
@@ -370,34 +397,62 @@ class BPSearch
             $search = $this->getParamValue($this->requestedParams['search']);
 
             // search パラメータの値の中で、半角・全角スペース、+ が連続している場合、半角スペース一つにする
-            $search = preg_replace('/[　\s\+]+/u', ' ', $search);
-
-            // search パラメータの値を、半角・全角スペースで分割して配列にする
-            $keywords = preg_split('/ /u', $search);
-            $keywords_count = count($keywords);
+            $search = preg_replace('/[　\s\+]+(?=(?:[^"]*"[^"]*")*[^"]*$)/ui', ' ', $search);
             $this->devModeMessage('キーワード（$search）', $search);
+
+            // search パラメータの値を、半角スペースで分割して配列にする
+            $keywords = preg_split('/ (?=(?:[^"]*"[^"]*")*[^"]*$)/ui', $search);
+            $keywords_count = count($keywords);
             $this->devModeMessage('キーワード（$keywords）', $keywords);
             $this->devModeMessage('キーワード数', $keywords_count);
 
             // 検索用コマンドを作成
             $cmd = '';
             $tmpFileNames = [];
+            $operator = isset($this->requestedParams['operator']) ? $this->requestedParams['operator'] : 'AND';
+            $operator = strtoupper($operator);
+            $this->devModeMessage('検索条件（$operator）', $operator);
             foreach ($keywords as $keyword) {
+                $keyword = preg_replace('/^"|"$/u', '', $keyword);
+                $this->devModeMessage('処理中のキーワード', $keyword);
                 $tmpFileName = tempnam(sys_get_temp_dir(), 'grep-param-');
                 $tmpFileNames[] = $tmpFileName;
                 $handle = fopen($tmpFileName, 'w');
                 fwrite($handle, $keyword);
                 fclose($handle);
-                if (empty($cmd)) {
-                    $cmd = 'grep -i -f "' . $tmpFileName . '" ' . $this->dataDirPath . '/all.txt';
-                } else {
-                    $cmd .= ' | grep -i -f "' . $tmpFileName . '"';
+                if ($operator === 'AND') {
+                    if (empty($cmd)) {
+                        $cmd = 'grep -i -f "' . $tmpFileName . '" ' . $this->dataDirPath . '/all.txt';
+                    }
+                    else {
+                        $cmd .= ' | grep -i -f "' . $tmpFileName . '"';
+                    }
                 }
+                elseif ($operator === 'OR') {
+                    if (empty($cmd)) {
+                        $cmd = 'grep -i -f "' . $tmpFileName . '"';
+                    }
+                    else {
+                        $cmd .= ' -i -f "' . $tmpFileName . '"';
+                    }
+                }
+                elseif ($operator === 'NOT') {
+                    if (empty($cmd)) {
+                        $cmd = 'grep -i -v -f "' . $tmpFileName . '"';
+                    }
+                    else {
+                        $cmd .= ' -i -v -f "' . $tmpFileName . '"';
+                    }
+                }
+            }
+            if ($operator === 'OR' || $operator === 'NOT') {
+                $cmd .= ' ' . $this->dataDirPath . '/all.txt';
             }
             if ($cmd != '') {
                 $cmd .= ' | awk \'{print $1}\'';
                 $res = chop(shell_exec($cmd));
                 $this->devModeMessage('実行コマンド', $cmd);
+                $this->devModeMessage('コマンド実行結果', $res);
                 if ($res) {
                     $ids = explode("\n", $res);
                     unset($res);
@@ -579,6 +634,10 @@ class BPSearch
                                 $match++;
                             }
                         }
+                        // ignore の場合（無視する）
+                        elseif ($filterRules[$key] === 'ignore') {
+                            $match++;
+                        }
                         // 完全一致検索の場合（初期値）
                         else {
                             // :empty:
@@ -672,6 +731,7 @@ class BPSearch
         exit();
     }
 
+
     /**
      * Initialisation
      */
@@ -681,17 +741,19 @@ class BPSearch
         if (count($this->config['margeMetaJsonPath'])) {
             foreach ($this->config['margeMetaJsonPath'] as $path) {
                 if ($mergeJSON = file_get_contents($path)) {
-                    $mergeJSON = json_decode($mergeJSON, true);
-                    $this->result = array_merge($this->result, $mergeJSON);
+                    $mergeData = json_decode($mergeJSON, true);
+                    unset($mergeJSON);
+                    $this->result = array_merge($this->result, $mergeData);
+                    unset($mergeData);
                 }
             }
         }
 
         // クエリ文字列をマージ
-        $this->result['params'] = $_GET;
+        $this->result['params'] = $this->getParams;
 
         // クエリ文字列を表示
-        $this->devModeMessage('QUERY_STRING', $_SERVER['QUERY_STRING']);
+        $this->devModeMessage('QUERY_STRING', (isset($_SERVER['QUERY_STRING']) ? $_SERVER['QUERY_STRING'] : ''));
 
         // cache=1 パラメータがついていてキャッシュファイルがある場合はそのファイルの中身を返して終了
         $this->getCache();
@@ -713,9 +775,11 @@ class BPSearch
 
         // 全記事の連想配列を作成
         $data = [];
-        if ($json = file_get_contents($this->dataDirPath . '/all.json')) {
-            $data = json_decode($json, true);
-            $data = $data['items'];
+        if ($allJson = file_get_contents($this->dataDirPath . '/all.json')) {
+            $json = json_decode($allJson, true);
+            unset($allJson);
+            $data = $json['items'];
+            unset($json);
         }
         $this->devModeMessage('全記事数', count($data));
         $this->devModeDumpMemory();
@@ -809,7 +873,7 @@ class BPSearch
             }
         }
         // 実行ファイルの URL を取得
-        $scriptUrl = $this->sanitizeUrl($_SERVER['REQUEST_URI']);
+        $scriptUrl = isset($_SERVER['REQUEST_URI']) ? $this->sanitizeUrl($_SERVER['REQUEST_URI']) : $this->sanitizeUrl('');
         if ($this->config['includeScriptUrl']) {
             $this->result['scriptUrl'] = $scriptUrl;
         }
