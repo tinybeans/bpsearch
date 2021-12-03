@@ -2,7 +2,7 @@
 /**
  * BPSearch クラス
  *
- * @version   1.3.0
+ * @version   1.3.2
  * @package   BPSearch
  * @copyright Copyright (c) Roy Okuwaki
  * @link      https://tinybeans.net
