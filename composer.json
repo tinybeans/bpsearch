@@ -10,16 +10,15 @@
             "email": "info@tinybeans.dev"
         }
     ],
-    "require": {},
+    "require": {
+        "php": ">=7.4"
+    },
     "autoload": {
         "psr-4": {
             "tinybeans\\bpsearch\\": "src/"
         }
     },
     "config": {
-        "sort-packages": true,
-        "platform": {
-            "php":  ">=7.4"
-        }
+        "sort-packages": true
     }
 }
