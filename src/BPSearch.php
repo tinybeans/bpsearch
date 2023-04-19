@@ -99,6 +99,21 @@ class BPSearch
             }
             $this->getParams = $commandParams;
         }
+
+        // ページネーションを無効化する
+        if (isset($this->getParams['includePagination']) && empty($this->getParams['includePagination'])) {
+            $config['includePagination'] = false;
+        }
+
+        if (!empty($config) && is_array($config)) {
+            $this->config = array_merge($this->config, $config);
+        }
+
+        if (isset($config['initParams']) && is_array($config['initParams']) && count($config['initParams'])) {
+            $this->requestedParams = array_merge($config['initParams'], $this->getParams);
+        } else {
+            $this->requestedParams = $this->getParams;
+        }
     }
 
 
@@ -719,22 +734,6 @@ class BPSearch
         // 実行前にGetパラメータを調整
         if (isset($this->callbacks['modifyGetParams']) && is_callable($this->callbacks['modifyGetParams'])) {
             $this->getParams = $this->callbacks['modifyGetParams']($this->getParams);
-        }
-
-        // ページネーションを無効化する
-        if (isset($this->getParams['includePagination']) && empty($this->getParams['includePagination'])) {
-            $config['includePagination'] = false;
-        }
-
-        if (!empty($config) && is_array($config)) {
-            $this->config = array_merge($this->config, $config);
-        }
-
-        if (isset($config['initParams']) && is_array($config['initParams']) && count($config['initParams'])) {
-            $this->requestedParams = array_merge($config['initParams'], $this->getParams);
-        }
-        else {
-            $this->requestedParams = $this->getParams;
         }
 
         // spliceオプションを上書きする
