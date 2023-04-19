@@ -56,7 +56,7 @@ class BPSearch
             'datetime' => 'eq',
         ],
         // 初期値として与えるパラメータ
-        'initParams' => null,
+        'initParams' => [],
         // パラメータマッピング
         'paramMapping' => [
             'from' => 'datetime',
@@ -107,12 +107,6 @@ class BPSearch
 
         if (!empty($config) && is_array($config)) {
             $this->config = array_merge($this->config, $config);
-        }
-
-        if (isset($config['initParams']) && is_array($config['initParams']) && count($config['initParams'])) {
-            $this->requestedParams = array_merge($config['initParams'], $this->getParams);
-        } else {
-            $this->requestedParams = $this->getParams;
         }
     }
 
@@ -734,6 +728,13 @@ class BPSearch
         // 実行前にGetパラメータを調整
         if (isset($this->callbacks['modifyGetParams']) && is_callable($this->callbacks['modifyGetParams'])) {
             $this->getParams = $this->callbacks['modifyGetParams']($this->getParams);
+        }
+
+        // 検索に利用する requestedParams プロパティをセット
+        if (is_array($this->config['initParams']) && count($this->config['initParams'])) {
+            $this->requestedParams = array_merge($this->config['initParams'], $this->getParams);
+        } else {
+            $this->requestedParams = $this->getParams;
         }
 
         // spliceオプションを上書きする
