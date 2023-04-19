@@ -13,20 +13,20 @@ namespace tinybeans\bpsearch;
 class BPSearch
 {
 
-    private $getParams;
-
-    public $timeStart = 0;
-    public $result = [
+    private array $callbacks = [];
+    private array $getParams;
+    public int $timeStart = 0;
+    public array $result = [
         'totalResults' => 0,
         'items' => [],
     ];
-    public $requestedParams = null;
-    private $dataDirPath = '';
-    private $config = [
+    public array $requestedParams = [];
+    private string $dataDirPath = '';
+    private array $config = [
         // データを格納しているディレクトリのパス
-        'dataDirPath' => null,
+        'dataDirPath' => '',
         // キャッシュを保存するディレクトリのパス
-        'cacheDirPath' => null,
+        'cacheDirPath' => '',
         // マージする検索データのパス
         'margeItemsJsonPath' => [],
         // マージするメタデータのパス
@@ -38,7 +38,7 @@ class BPSearch
         'return_all' => false,
         // 先頭のいくつかの item を抜き出して splicedItems に入れる。[$offset, $length] という 2要素を持つ配列で指定する。
         // URL パラメータで指定する場合は splice_o と splice_l で指定する
-        'splice' => null, // 先頭の1つを抜き出す場合は [0, 1]
+        'splice' => [], // 先頭の1つを抜き出す場合は [0, 1]
         // フィルター検索を許可するパラメータ（ `search` `rand` `from` `to` `operator` は特殊なパラメータのためフィルターに利用できません）
         'filters' => [
             'id' => 'eq',
@@ -87,7 +87,7 @@ class BPSearch
      */
     public function __construct($config)
     {
-        $commandOptions = getopt(null, ['query::']);
+        $commandOptions = getopt('', ['query::']);
         if (empty($commandOptions)) {
             $this->getParams = $_GET;
         }
@@ -99,39 +99,20 @@ class BPSearch
             }
             $this->getParams = $commandParams;
         }
-
-        // 実行前にGetパラメータを調整
-        if (function_exists('modifyGetParams')) {
-            $this->getParams = modifyGetParams($this->getParams);
-        }
-
-        // ページネーションを無効化する
-        if (isset($this->getParams['includePagination']) && empty($this->getParams['includePagination'])) {
-            $config['includePagination'] = false;
-        }
-
-        if (!empty($config) && is_array($config)) {
-            $this->config = array_merge($this->config, $config);
-        }
-
-        if (isset($config['initParams']) && is_array($config['initParams']) && count($config['initParams'])) {
-            $this->requestedParams = array_merge($config['initParams'], $this->getParams);
-        }
-        else {
-            $this->requestedParams = $this->getParams;
-        }
-
-        // spliceオプションを上書きする
-        if (!empty($this->getParams['splice_l'])) {
-            $this->config['splice'] = [
-                !empty($this->getParams['splice_o']) ? (int)$this->getParams['splice_o'] : 0,
-                (int)$this->getParams['splice_l']
-            ];
-        }
-
-        $this->init();
     }
 
+
+    /**
+     * コールバック関数を追加する。
+     *
+     * @param string $hookName
+     * @param callable $callback
+     * @return void
+     */
+    public function addCallback(string $hookName, callable $callback): void
+    {
+        $this->callbacks[$hookName] = $callback;
+    }
 
     /**
      * devMode が true の時にデバッグ用のメッセージを出力する。
@@ -169,11 +150,11 @@ class BPSearch
     /**
      * $page（現在のページ数）と $limit 数から offset を算出する。
      *
-     * @param $page
-     * @param $limit
-     * @return number
+     * @param int $page
+     * @param int $limit
+     * @return float|int
      */
-    public function getOffset($page, $limit)
+    public function getOffset(int $page, int $limit)
     {
         $offset = ($page - 1) * $limit;
         if ($offset < 0) {
@@ -192,12 +173,12 @@ class BPSearch
      * @param $limit
      * @return string
      */
-    public function limitOffsetAddUrl($url, $page, $limit)
+    public function limitOffsetAddUrl($url, $page, $limit): string
     {
-        $out = $url . (strpos($url, '?') === false ? '?' : '&') . "limit={$limit}";
+        $out = $url . (strpos($url, '?') === false ? '?' : '&') . "limit=$limit";
         $offset = ($page - 1) * $limit;
         if ($offset > 0) {
-            $out .= "&offset={$offset}";
+            $out .= "&offset=$offset";
         }
         return $out;
     }
@@ -209,7 +190,7 @@ class BPSearch
      * @param $urlString
      * @return array
      */
-    public function sanitizeUrl($urlString)
+    public function sanitizeUrl($urlString): array
     {
         $url = parse_url($urlString);
         $sanitize_query = [];
@@ -240,7 +221,7 @@ class BPSearch
      * @param $param
      * @return string
      */
-    public function getParamValue($param)
+    public function getParamValue($param): string
     {
         $param = (string)$param;
         if (ctype_digit($param)) {
@@ -292,7 +273,7 @@ class BPSearch
      * @param $data
      * @return array
      */
-    public function getRandomEntries($data)
+    public function getRandomEntries($data): array
     {
         $randomData = [];
         if (empty($data)) {
@@ -320,11 +301,10 @@ class BPSearch
      *
      * @return string
      */
-    public function createCacheFileName()
+    public function createCacheFileName(): string
     {
-        $query = $_SERVER['QUERY_STRING'];
-        $query = preg_replace('/&?_=[^&]+/u', '', $query);
-        $cacheDirPath = $this->config['cacheDirPath'] ? $this->config['cacheDirPath'] : realpath('cache');
+        $query = preg_replace('/&?_=[^&]+/u', '', $_SERVER['QUERY_STRING']);
+        $cacheDirPath = $this->config['cacheDirPath'] ?: realpath('cache');
         $cacheFileName = $cacheDirPath . DIRECTORY_SEPARATOR . md5($query);
         $this->devModeMessage('キャッシュファイル名', $cacheFileName);
         return $cacheFileName;
@@ -332,39 +312,43 @@ class BPSearch
 
 
     /**
-     * キャッシュファイルがある場合はキャッシュファイルを取得して表示する。
+     * キャッシュファイルがある場合はキャッシュファイルの中身を返す。
      *
-     * @return bool
+     * @return string
      */
-    public function getCache()
+    public function getCache(): string
     {
         if (empty($_SERVER['QUERY_STRING']) || empty($this->requestedParams['cache'])) {
-            return false;
+            return '';
         }
         $cacheFileName = $this->createCacheFileName();
-        if (!file_exists($cacheFileName)) {
-            return false;
+        if (file_exists($cacheFileName)) {
+            $cache = file_get_contents($cacheFileName);
+            if ($cache !== false) {
+                return $cache;
+            }
         }
-        if ($cache = file_get_contents($cacheFileName)) {
-            echo $cache;
-            exit();
-        }
+        return '';
     }
 
 
     /**
-     * キャッシュファイルを書き出す。
+     * キャッシュファイルを書き出す。書き出しに成功した場合は true, 失敗した場合は false を返す。
      *
      * @return bool
      */
-    public function setCache()
+    public function setCache(): bool
     {
         if (empty($this->requestedParams['cache'])) {
             return false;
         }
         $cacheFileName = $this->createCacheFileName();
         $content = json_encode($this->result, JSON_UNESCAPED_UNICODE);
-        file_put_contents($cacheFileName, $content);
+        $result = file_put_contents($cacheFileName, $content);
+        if ($result === false) {
+            return false;
+        }
+        return true;
     }
 
 
@@ -384,11 +368,11 @@ class BPSearch
      * @param $data
      * @return array
      */
-    public function search($data)
+    public function search($data): array
     {
         $entries = [];
         if (empty($this->requestedParams['search'])) {
-            foreach ($data as $entry_id => $entry) {
+            foreach ($data as $entry) {
                 $entries[] = $entry;
             }
         }
@@ -409,7 +393,7 @@ class BPSearch
             // 検索用コマンドを作成
             $cmd = '';
             $tmpFileNames = [];
-            $operator = isset($this->requestedParams['operator']) ? $this->requestedParams['operator'] : 'AND';
+            $operator = $this->requestedParams['operator'] ?? 'AND';
             $operator = strtoupper($operator);
             $this->devModeMessage('検索条件（$operator）', $operator);
             foreach ($keywords as $keyword) {
@@ -456,7 +440,7 @@ class BPSearch
                 if ($res) {
                     $ids = explode("\n", $res);
                     unset($res);
-                    array_unique($ids);
+                    $ids = array_unique($ids);
                     $this->devModeMessage('該当ID', implode(', ', $ids));
                     foreach ($ids as $id) {
                         if (array_key_exists($id, $data)) {
@@ -487,7 +471,7 @@ class BPSearch
      * @param $entries
      * @return array
      */
-    public function filterSearch($entries)
+    public function filterSearch($entries): array
     {
         if (empty($entries) || empty($this->requestedParams) || empty($this->config['filters'])) {
             return $entries;
@@ -538,7 +522,7 @@ class BPSearch
                 foreach ($filters as $key => $value) {
 
                     // パラメータマッピングからキーを取得
-                    $mappedKey = isset($this->config['paramMapping'][$key]) ? $this->config['paramMapping'][$key] : $key;
+                    $mappedKey = $this->config['paramMapping'][$key] ?? $key;
 
                     // $mappedKey が $entry の中に存在する場合だけ処理する
                     if (!isset($entry[$mappedKey])) {
@@ -570,10 +554,7 @@ class BPSearch
                     // 例：category[]=blog&category[]=news の場合は category が blog か news であればヒット
                     elseif (is_array($value)) {
                         if (in_array($entry[$mappedKey], $value)) {
-                            if (isset($filterRules[$key]) && $filterRules[$key] === 'not') {
-                                // ヒットさせない
-                            }
-                            else {
+                            if ( !(isset($filterRules[$key]) && $filterRules[$key] === 'not') ) {
                                 $match++;
                             }
                         }
@@ -585,10 +566,7 @@ class BPSearch
                     // 例：categoryIds=123 で $entry['categoryIds] = [] の場合は categoryIds が JSON の categoryIds の配列の中にあればヒット
                     elseif (is_array($entry[$mappedKey])) {
                         if (in_array($value, $entry[$mappedKey])) {
-                            if (isset($filterRules[$key]) && $filterRules[$key] === 'not') {
-                                // ヒットさせない
-                            }
-                            else {
+                            if ( !(isset($filterRules[$key]) && $filterRules[$key] === 'not') ) {
                                 $match++;
                             }
                         }
@@ -690,8 +668,8 @@ class BPSearch
      */
     public function sortEntries($entries)
     {
-        $sortBy = isset($this->requestedParams['sortBy']) ? $this->requestedParams['sortBy'] : $this->config['sortBy'];
-        $sortOrder = isset($this->requestedParams['sortOrder']) ?$this->requestedParams['sortOrder'] : $this->config['sortOrder'];
+        $sortBy = $this->requestedParams['sortBy'] ?? $this->config['sortBy'];
+        $sortOrder = $this->requestedParams['sortOrder'] ?? $this->config['sortOrder'];
         $sortBy = explode(',', $sortBy);
         $sortOrder = explode(',', $sortOrder);
         $sort = [];
@@ -722,11 +700,12 @@ class BPSearch
     /**
      * レスポンスを返却してスクリプトを終了する。
      */
-    public function response()
+    public function response(): void
     {
-        if (function_exists('beforeResponse')) {
-            $this->result = beforeResponse($this->result);
+        if (isset($this->callbacks['beforeResponse']) && is_callable($this->callbacks['beforeResponse'])) {
+            $this->result = $this->callbacks['beforeResponse']($this->result);
         }
+        header('Content-Type: application/json; charset=utf-8');
         echo json_encode($this->result, JSON_UNESCAPED_UNICODE);
         exit();
     }
@@ -735,8 +714,37 @@ class BPSearch
     /**
      * Initialisation
      */
-    public function init()
+    public function run()
     {
+        // 実行前にGetパラメータを調整
+        if (isset($this->callbacks['modifyGetParams']) && is_callable($this->callbacks['modifyGetParams'])) {
+            $this->getParams = $this->callbacks['modifyGetParams']($this->getParams);
+        }
+
+        // ページネーションを無効化する
+        if (isset($this->getParams['includePagination']) && empty($this->getParams['includePagination'])) {
+            $config['includePagination'] = false;
+        }
+
+        if (!empty($config) && is_array($config)) {
+            $this->config = array_merge($this->config, $config);
+        }
+
+        if (isset($config['initParams']) && is_array($config['initParams']) && count($config['initParams'])) {
+            $this->requestedParams = array_merge($config['initParams'], $this->getParams);
+        }
+        else {
+            $this->requestedParams = $this->getParams;
+        }
+
+        // spliceオプションを上書きする
+        if (!empty($this->getParams['splice_l'])) {
+            $this->config['splice'] = [
+                !empty($this->getParams['splice_o']) ? (int)$this->getParams['splice_o'] : 0,
+                (int)$this->getParams['splice_l']
+            ];
+        }
+
         // メタデータをマージ
         if (count($this->config['margeMetaJsonPath'])) {
             foreach ($this->config['margeMetaJsonPath'] as $path) {
@@ -753,13 +761,17 @@ class BPSearch
         $this->result['params'] = $this->getParams;
 
         // クエリ文字列を表示
-        $this->devModeMessage('QUERY_STRING', (isset($_SERVER['QUERY_STRING']) ? $_SERVER['QUERY_STRING'] : ''));
+        $this->devModeMessage('QUERY_STRING', ($_SERVER['QUERY_STRING'] ?? ''));
 
         // cache=1 パラメータがついていてキャッシュファイルがある場合はそのファイルの中身を返して終了
-        $this->getCache();
+        $cache = $this->getCache();
+        if ($cache) {
+            echo $cache;
+            exit();
+        }
 
         // ディレクトリのパスをセット
-        $this->dataDirPath = $this->config['dataDirPath'] ? $this->config['dataDirPath'] : realpath('data');
+        $this->dataDirPath = $this->config['dataDirPath'] ?: realpath('data');
 
         if ($this->config['returnTime']) {
             $this->timeStart = microtime(true);
@@ -803,7 +815,7 @@ class BPSearch
 
         // rand=キー が指定され、結果が limit に満たない場合はランダム記事で埋める
         if (!empty($this->requestedParams['rand']) && !empty($randomData) && count($entries) < $limit) {
-            foreach ($randomData as $random_key => $random_value) {
+            foreach ($randomData as $random_value) {
                 $entries[] = $random_value;
                 if (count($entries) == $limit) {
                     break;
@@ -852,8 +864,8 @@ class BPSearch
         }
         else {
             // splice オプションが設定されている場合
-            if (isset($this->config['splice']) && is_array($this->config['splice'])) {
-                $spliceLength = $this->config['splice'][1] < $total_results ? $this->config['splice'][1] : $total_results;
+            if (is_array($this->config['splice']) && count($this->config['splice']) > 0) {
+                $spliceLength = min($this->config['splice'][1], $total_results);
                 $splicedItems = array_splice($entries, $this->config['splice'][0], $spliceLength);
                 $this->result['splicedItems'] = $splicedItems;
                 $this->result['items'] = $entries;
@@ -932,7 +944,7 @@ class BPSearch
                 // $pagination['debug_page_to'] = $pagination['currentPage'] + $page_padding;
                 if ($pagination['page_from'] < 1) {
                     $pagination['page_from'] = 1;
-                    $pagination['page_to'] = $this->config['viewPagesLimit'] < $pagination['maxPage'] ? $this->config['viewPagesLimit'] : $pagination['maxPage'];
+                    $pagination['page_to'] = min($this->config['viewPagesLimit'], $pagination['maxPage']);
                 }
                 // $pagination['debug2_page_from'] = $pagination['page_from'];
                 // $pagination['debug2_page_to'] = $pagination['page_to'];
@@ -964,6 +976,5 @@ class BPSearch
         $this->setCache();
         $this->response();
         /*  END 結果を出力  */
-
     }
 }
