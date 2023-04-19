@@ -725,7 +725,7 @@ class BPSearch
      */
     public function run()
     {
-        // 実行前にGetパラメータを調整
+        // 実行前にGETパラメータを調整
         if (isset($this->callbacks['modifyGetParams']) && is_callable($this->callbacks['modifyGetParams'])) {
             $this->getParams = $this->callbacks['modifyGetParams']($this->getParams);
         }
