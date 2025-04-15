@@ -391,6 +391,10 @@ class BPSearch
 
             // search パラメータの値の中で、半角・全角スペース、+ が連続している場合、半角スペース一つにする
             $search = preg_replace('/[　\s\+]+(?=(?:[^"]*"[^"]*")*[^"]*$)/ui', ' ', $search);
+
+            // 最初と最後のスペースを削除する
+            $search = preg_replace('/^ +| +$/u', '', $search);
+
             $this->devModeMessage('キーワード（$search）', $search);
 
             // search パラメータの値を、半角スペースで分割して配列にする
