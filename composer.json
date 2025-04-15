@@ -1,7 +1,7 @@
 {
     "name": "tinybeans/bpsearch",
     "description": "bpsearch core scripts",
-    "version": "1.4.0",
+    "version": "1.4.1",
     "type": "library",
     "license": "proprietary",
     "authors": [
